@@ -1,7 +1,11 @@
+# mirt package----
 install.packages("mirt", dependencies = TRUE)
 library(mirt)
 
-# the other packages
+# tutorial site----
+# https://github.com/philchalmers/mirt/wiki
+
+# the other packages----
 library(latex2exp) # for latex coding
 library(tidyverse) # for data transformation and visualization
 
@@ -287,8 +291,99 @@ MAP_fpd2_g
 # test data
 
 
+# example plot for multigroup distribution----
+tibble(theta = c(-4:4)) %>% ggplot(aes(x = theta))+
+  stat_function(fun = dnorm, args = list(mean = -1, sd = 1), colour = 2)+
+  stat_function(fun = dnorm, args = list(mean = 1, sd = 1), colour = 3)+
+  stat_function(fun = function(x, arg1, arg2) 0.5*dnorm(x, arg1[1], arg1[2])+0.5*dnorm(x, arg2[1], arg2[2]) , args = list(arg1 = c(-1,1), arg2 = c(1, 1)))
+
 # Log likelihood function for item parameters----
 
-# IRT analysis via mirt package
+# Single group IRT analysis via mirt package----
 
-# test data
+# simulation data
+set.seed(0204)
+at <- rlnorm(30, 0.2, 0.5) # non negetive real
+bt <- rnorm(30, 0, 1) # real
+tt <- rnorm(5000, 0, 1.5) # real 
+dat1 <- simdata(a = at, d = -bt*at, Theta = as.matrix(tt), itemtype = "dich") # b = -d/a then d = -a*b
+
+# model object
+mod1 <- mirt.model('Factor1 = 1-30') # One factor
+
+# estimation
+fit1 <- mirt(data = dat1, model = mod1, itemtype = "2PL") # mirt(data = dat, model = 1, itemtype = "2PL", ) でもOK
+
+# extract parameter and fit index
+par1 <- coef(fit1, IRTpars = T, simplify = T)
+ml1 <- fscores(fit1, method = "ML")
+
+# trace plot
+plot(fit1, type = "trace")
+
+# fit
+# (total) test fit index
+M2(fit1)
+
+# item fit index
+# infit statistics can be estimated only if model is Rasch.
+itemfit(fit1, fit_stats = "S_X2")
+itemfit(fit1, fit_stats = "G2")
+# empirical item trace line plot
+itemfit(fit1, empirical.plot = c(3))
+
+# person fit index
+personfit(fit1, method = "MAP") # this values follow standard normal distribution (empirically)
+
+# expected total score (test characteristic curve)
+plot(fit1)
+
+# test information function
+testinfo(fit1, sort(ml1)) %>% plot(x = sort(ml1), type = "l", xlim = c(-6,6))
+plot(fit1, type = "info")
+##
+#  dentype = 'Davidian-4'
+# plot(fit1, type = "Davidian") # only if estimated via Davidian curve IRT
+
+
+# Multiple group IRT analysis via mirt packagte----
+set.seed(19930828)
+at1 <- rlnorm(45, 0.2, 0.5) # non negetive real
+bt1 <- rnorm(45, 0, 1) # real
+# group 1
+tt1 <- rnorm(5000, 0, 1) # real 
+tmp1 <- simdata(a = at1, d = -bt1*at1, Theta = as.matrix(tt1), itemtype = "dich") %>% as.data.frame()
+tmp1[,31:45] <- NA
+# at1 <- at1[1:30]
+# bt1 <- bt1[1:30]
+
+set.seed(19930829)
+at2 <- c( at1[1:30], rlnorm(15, 0.2, 0.5) )# non negetive real
+bt2 <- c( bt1[1:30], rnorm(15, 1, 1) ) # real
+# group 2
+tt2 <- rnorm(5000, 1, 1.5) # real 
+tmp2 <- simdata(a = at2, d = -bt2*at2, Theta = as.matrix(tt2), itemtype = "dich")  %>% as.data.frame()
+tmp2[,1:15] <- NA
+
+# join
+dat2 <- rbind(tmp1, tmp2)
+
+# group index vector (must be character vector)
+grp2 <- c(rep("G1",5000), rep("G2",5000))
+
+# model
+mod2 <- mirt.model('Factor1 = 1-45') # One factor
+
+# constraint
+const <- c("free_var", "free_means", colnames(dat2))
+
+# estimate
+fit2 <- multipleGroup(dat2, mod2, group = grp2, invariance = const, 
+                      itemtype = "2PL", empiricalhist = T, accelerate = "squarem") #, dentype = "empiricalhist")
+
+# 
+coef(fit2, simplify = T, IRTpars = T)
+plot(fit2, type = 'empiricalhist')
+
+# grp2 <- c(rep(1,5000), rep(2,5000))
+# irtfun2::estip2(cbind(grp2, dat2), IDc = 0, Gc = 1, fc = 2, D = 1.0)
