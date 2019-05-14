@@ -304,22 +304,23 @@ tibble(theta = c(-4:4)) %>% ggplot(aes(x = theta))+
 # simulation data
 set.seed(0204)
 at <- rlnorm(30, 0.2, 0.5) # non negetive real
-bt <- rnorm(30, 0, 1) # real
-tt <- rnorm(5000, 0, 1.5) # real 
+bt <- rnorm(30, 0, 1.5) # real
+tt <- rnorm(5000, 0, 1) # real 
 dat1 <- simdata(a = at, d = -bt*at, Theta = as.matrix(tt), itemtype = "dich") # b = -d/a then d = -a*b
 
 # model object
 mod1 <- mirt.model('Factor1 = 1-30') # One factor
 
 # estimation
-fit1 <- mirt(data = dat1, model = mod1, itemtype = "2PL") # mirt(data = dat, model = 1, itemtype = "2PL", ) でもOK
+fit1 <- mirt(data = dat1, model = mod1, itemtype = "2PL", SE = TRUE, SE.type = 'complete') # mirt(data = dat, model = 1, itemtype = "2PL", ) でもOK
 
 # extract parameter and fit index
-par1 <- coef(fit1, IRTpars = T, simplify = T)
+par1 <- coef(fit1, IRTpars = T, simplify = T, printSE = T)
 ml1 <- fscores(fit1, method = "ML")
 
 # trace plot
 plot(fit1, type = "trace")
+itemplot(fit1, 1)
 
 # fit
 # (total) test fit index
@@ -361,7 +362,7 @@ set.seed(19930829)
 at2 <- c( at1[1:30], rlnorm(15, 0.2, 0.5) )# non negetive real
 bt2 <- c( bt1[1:30], rnorm(15, 1, 1) ) # real
 # group 2
-tt2 <- rnorm(5000, 1, 1.5) # real 
+tt2 <- rnorm(5000, 1, 1) # real 
 tmp2 <- simdata(a = at2, d = -bt2*at2, Theta = as.matrix(tt2), itemtype = "dich")  %>% as.data.frame()
 tmp2[,1:15] <- NA
 
@@ -378,12 +379,12 @@ mod2 <- mirt.model('Factor1 = 1-45') # One factor
 const <- c("free_var", "free_means", colnames(dat2))
 
 # estimate
-fit2 <- multipleGroup(dat2, mod2, group = grp2, invariance = const, 
-                      itemtype = "2PL", empiricalhist = T, accelerate = "squarem") #, dentype = "empiricalhist")
+fit2 <- multipleGroup(dat2, mod2, group = grp2, invariance = const, dentype = "empiricalhist",
+                      itemtype = "2PL", empiricalhist = T, accelerate = "squarem")
 
 # 
 coef(fit2, simplify = T, IRTpars = T)
-plot(fit2, type = 'empiricalhist')
+plot(fit2, type = 'empiricalhist', npts = 60)
 
 # grp2 <- c(rep(1,5000), rep(2,5000))
 # irtfun2::estip2(cbind(grp2, dat2), IDc = 0, Gc = 1, fc = 2, D = 1.0)
