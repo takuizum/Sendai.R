@@ -291,6 +291,89 @@ MAP_fpd2_g
 # test data
 
 
+# Expected Log Complete Likelihood function for item parameters----
+
+# likelihood
+L <- function(u, theta, a, b){
+  # c とDは固定
+  p <- ptheta(theta = theta, a = a, b = b, c = 0, D = 1)
+  prod(p^u*(1-p)^(1-u))
+}
+# expected complete log likelihood
+ELL <- function(r, N, a, b, theta){
+  p <- ptheta(theta = theta, a = a, b = b, c = 0, D = 1)
+  sum(r*log(p)+(N-r)*log(1-p))
+}
+
+# distribution for marginal
+node <- seq(-4, 4, length.out = 31)
+weight <- dnorm(node)/sum(dnorm(node)) # normalization
+
+# data
+set.seed(0204)
+at <- rlnorm(30, 0.2, 0.5) # non negetive real
+bt <- rnorm(30, 0, 1.5) # real
+tt <- rnorm(5000, 0, 1) # real 
+dat1 <- simdata(a = at, d = -bt*at, Theta = as.matrix(tt), itemtype = "dich")
+
+# Estep
+Lim <- matrix(nrow = 5000, ncol = 31) # subjects * nodes
+Gim <- matrix(nrow = 5000, ncol = 31) # subjects * nodes
+for(i in 1:5000){
+  for(m in 1:31) Lim[i,m] <- L(dat1[i,], node[m], at, bt)
+}
+
+for(i in 1:5000){
+  Gim[i,] <- Lim[i,]*weight / sum(Lim[i,]*weight)
+}
+
+Nm <- colSums(Gim) # 各ノードごとの期待受検者度数
+rjm <- t(dat1) %*% Gim # 各ノードごとの期待正答受検者度数
+
+# 等高線
+
+# item 1
+Estep_Likelihood <- matrix(nrow = 31, ncol = 31)
+ai <-  seq(0, 3, length.out = 31)
+bi <- seq(-1, 4, length.out = 31)
+for(i in 1:31){
+  for(j in 1:31){
+    Estep_Likelihood[i, j] <- ELL(rjm[1,], Nm, ai[i], bi[j], node)
+  }
+}
+
+colnames(Estep_Likelihood) <- bi
+Estep_Likelihood <- cbind(a = ai, Estep_Likelihood)
+Estep_Likelihood %<>% 
+  as_tibble() %>% 
+  gather(key = "b", value = "ELL", -a) %>% 
+  map_df(as.numeric)
+# ggplot
+Estep_Likelihood %>% ggplot(aes(x = b, y = a, z = ELL))+
+  geom_contour(bins = 100)+
+  labs(title = paste("a =", round(at[1], digits = 5), ", b =", round(bt[1], digits = 5)))
+
+# item 2
+Estep_Likelihood <- matrix(nrow = 31, ncol = 31)
+ai <-  seq(0, 0.5, length.out = 31)
+bi <- seq(-1, 3, length.out = 31)
+for(i in 1:31){
+  for(j in 1:31){
+    Estep_Likelihood[i, j] <- ELL(rjm[2,], Nm, ai[i], bi[j], node)
+  }
+}
+
+colnames(Estep_Likelihood) <- bi
+Estep_Likelihood <- cbind(a = ai, Estep_Likelihood)
+Estep_Likelihood %<>% 
+  as_tibble() %>% 
+  gather(key = "b", value = "ELL", -a) %>% 
+  map_df(as.numeric)
+# ggplot
+Estep_Likelihood %>% ggplot(aes(x = b, y = a, z = ELL))+
+  geom_contour(bins = 100)+
+  labs(title = paste("a =", round(at[2], digits = 5), ", b =", round(bt[2], digits = 5)))
+
 # example plot for multigroup distribution----
 tibble(theta = c(-4:4)) %>% ggplot(aes(x = theta))+
   stat_function(fun = dnorm, args = list(mean = -1, sd = 1), colour = 2)+
@@ -298,6 +381,7 @@ tibble(theta = c(-4:4)) %>% ggplot(aes(x = theta))+
   stat_function(fun = function(x, arg1, arg2) 0.5*dnorm(x, arg1[1], arg1[2])+0.5*dnorm(x, arg2[1], arg2[2]) , args = list(arg1 = c(-1,1), arg2 = c(1, 1)))
 
 # Log likelihood function for item parameters----
+
 
 # Single group IRT analysis via mirt package----
 
