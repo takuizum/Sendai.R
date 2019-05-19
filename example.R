@@ -9,6 +9,14 @@ library(mirt)
 library(latex2exp) # for latex coding
 library(tidyverse) # for data transformation and visualization
 
+# normal distribution
+tibble(theta = seq(-4, 4, length.out = 101)) %>% 
+  mutate(prob = dnorm(theta))%>%
+  ggplot(aes(x = theta, y = prob))+
+  geom_path()+
+  geom_ribbon(data = tibble(z = seq(-4, -2, length.out = 31)) %>% mutate(prob = dnorm(z)), aes(x = z, y = prob, ymin = 0, ymax = prob))
+
+
 # Log likelihood function for theta graph----
 # P(theta) in two-parameter logisticmodel
 ptheta <- function(theta,a,b,c,D=1.702){
